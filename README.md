@@ -37,7 +37,7 @@ CREATE TABLE [SimpleMigration_VersionInfo](
 
 ### NOTE
 
-This script was made ??to run on SqlServer. You will need to adapt this script if you want to use in another database type.
+This script was made to run on SqlServer. You will need to adapt this script if you want to use in another database type.
 
 Update sm.exe.config to use your Connection String.
 
