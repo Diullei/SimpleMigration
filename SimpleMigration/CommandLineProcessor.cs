@@ -121,6 +121,7 @@ namespace SimpleMigration
                                          catch (Exception ex)
                                          {
                                              Error("Migrate database to " + version + " --> " + ex.Message);
+                                             throw ex;
                                          }
 
                                          Console.WriteLine("Database migrated to: " + Util.GetCurrentDataBaseVersion() + " version.");
