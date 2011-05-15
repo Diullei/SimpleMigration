@@ -22,6 +22,7 @@ Onde:
 
 Crie a tabela de versão no banco a ser versionado seguindo o script abaixo:
 
+```sql
 CREATE TABLE [SimpleMigration_VersionInfo](
 	[version] [bigint] NOT NULL,
 	CONSTRAINT [PK_SimpleMigration_VersionInfo] PRIMARY KEY CLUSTERED 
@@ -29,6 +30,7 @@ CREATE TABLE [SimpleMigration_VersionInfo](
 		[version] ASC
 	)
 ) ON [PRIMARY]
+```
 
 ## NOTA
 
