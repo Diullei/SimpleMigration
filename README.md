@@ -17,6 +17,7 @@ root\
 ```
 
 As: 
+
 	* "root" is the chosen folder to deploy the SimpleMigration;
 	* "sm.exe" and "sm.exe.config" are files located in the bin\Debug or bin\Release project folder after compiling;
 	* "mig" is the folder where the migration files will be stored;
