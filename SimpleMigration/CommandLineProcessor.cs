@@ -105,9 +105,10 @@ namespace SimpleMigration
                                                          connection.Execute(query, null, transaction);
                                                          transaction.Commit();
                                                      }
-                                                     finally 
+                                                     catch(Exception ex) 
                                                      {
                                                          transaction.Rollback();
+                                                         throw ex;
                                                      }
                                                  }
                                              }
