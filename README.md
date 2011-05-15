@@ -16,7 +16,7 @@ root\
      +--(migration files)
 ```
 
-As: 
+Where: 
 
 * "root" is the chosen folder to deploy the SimpleMigration;
 * "sm.exe" and "sm.exe.config" are files located in the bin\Debug or bin\Release project folder after compiling;
