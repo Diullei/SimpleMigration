@@ -97,8 +97,19 @@ namespace SimpleMigration
 
                                              using (var connection = Util.CreateConnection())
                                              {
-                                                 var query = File.ReadAllText(string.Format("mig\\{0}-{1}.sql", version, isUp ? "up" : "down"));
-                                                 connection.Execute(query);
+                                                 using (var transaction = connection.BeginTransaction())
+                                                 {
+                                                     try
+                                                     {
+                                                         var query = File.ReadAllText(string.Format("mig\\{0}-{1}.sql", version, isUp ? "up" : "down"));
+                                                         connection.Execute(query, null, transaction);
+                                                         transaction.Commit();
+                                                     }
+                                                     finally 
+                                                     {
+                                                         transaction.Rollback();
+                                                     }
+                                                 }
                                              }
 
                                              if (isUp)
