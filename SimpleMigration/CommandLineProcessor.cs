@@ -8,6 +8,8 @@ namespace SimpleMigration
 {
     public class CommandLineProcessor
     {
+        private const int RESET = -2;
+
         private static string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         public CommandLineProcessor(string[] args)
@@ -21,10 +23,13 @@ namespace SimpleMigration
                         case "?":
                             Help();
                             break;
+                        case "reset":
+                            MigrateTo(RESET);
+                            break;
                         case "version":
                             try
                             {
-                                MigrateTo(Convert.ToInt32(args[1]));
+                                MigrateTo(Convert.ToInt64(args[1]));
                             }
                             catch (Exception)
                             {
@@ -60,13 +65,18 @@ namespace SimpleMigration
 
             var dbVersions = Util.GetVersionsInFolder(Environment.CurrentDirectory + @"\mig");
 
-            if (!dbVersions.Contains(number))
-            {
-                Error("Invalid version number");
-                return;
-            }
+            if(number != RESET)
+                if (!dbVersions.Contains(number))
+                {
+                    Error("Invalid version number");
+                    return;
+                }
 
             var dbVersion = Util.GetCurrentDataBaseVersion();
+
+            if(dbVersion == 0)
+                Console.WriteLine("there is no version to reset.");
+
             if (dbVersion == number)
             {
                 Console.WriteLine("Database is up to date.");

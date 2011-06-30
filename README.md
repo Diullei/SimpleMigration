@@ -46,6 +46,7 @@ That done we are ready to use SimpleMigration:
 * Use 'sm ?' command to help;
 * Use 'sm' command to migrate its database to the latest version if it is outdated.
 * Use 'sm version NUMBER' command, where NUMBER is the target version number.
+* Use 'sm reset' command, to revert database to initial state.
 	
 OBS: this is a BETA program.
 

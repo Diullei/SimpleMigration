@@ -57,6 +57,16 @@ namespace SimpleMigration
             return list.Max(l => l);
         }
 
+        public static long GetMinVersionNumberInFolder(string versionFolder)
+        {
+            var list = GetVersionsInFolder(versionFolder);
+
+            if (list.Count == 0)
+                return -1;
+
+            return list.Min(l => l);
+        }
+
         public static List<long> GetVersionsInFolder(string versionFolder)
         {
             ValidateVersionFiles(versionFolder);
@@ -140,10 +150,5 @@ namespace SimpleMigration
                 connection.Execute("delete from SimpleMigration_VersionInfo where version >= @VERSION", new { VERSION = version });
             }
         }
-    }
-
-    public class DbVersion
-    {
-        public long Version { get; set; }
     }
 }
