@@ -21,7 +21,7 @@ namespace SimpleMigration
                                   {
                                       if(!Regex.IsMatch(f, @"[0-9]+\-([Uu][Pp]|[Dd][Oo][Ww][Nn])\.sql"))
                                       {
-                                          throw new Exception("Invalid file name.");
+                                          throw new Exception(string.Format("Invalid file name '{0}'", f));
                                       }
 
                                       var version = f.Substring(0, f.LastIndexOf('-'));
@@ -79,7 +79,7 @@ namespace SimpleMigration
                 {
                     if (!Regex.IsMatch(f, @"[0-9]+\-([Uu][Pp]|[Dd][Oo][Ww][Nn])\.sql"))
                     {
-                        throw new Exception("Invalid file name.");
+                        throw new Exception(string.Format("Invalid file name '{0}'", f));
                     }
 
                     var version = f.Substring(0, f.LastIndexOf('-'));

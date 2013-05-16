@@ -26,6 +26,9 @@ namespace SimpleMigration
                         case "reset":
                             MigrateTo(RESET);
                             break;
+                        case "new":
+                            NewTemplate();
+                            break;
                         case "version":
                             try
                             {
@@ -48,6 +51,25 @@ namespace SimpleMigration
             {
                 Error("Unespected error --> " + ex.Message);
             }
+        }
+
+        private static void NewTemplate()
+        {
+            var nextNumber = Util.GetMaxVersionNumberInFolder(Environment.CurrentDirectory + @"\mig") + 1;
+
+            using (var sw = new StreamWriter(string.Format("{0}\\mig\\{1}-UP.sql", Environment.CurrentDirectory, nextNumber)))
+            {
+                sw.Write("-- create here your up script.");
+            }
+            
+            Console.WriteLine("file {0}\\mig\\{1}-UP.sql created.", Environment.CurrentDirectory, nextNumber);
+
+            using (var sw = new StreamWriter(string.Format("{0}\\mig\\{1}-DOWN.sql", Environment.CurrentDirectory, nextNumber)))
+            {
+                sw.Write("-- create here your roolback script to " + nextNumber + ".UP.sql script.");
+            }
+
+            Console.WriteLine("file {0}\\mig\\{1}-DOWN.sql created.", Environment.CurrentDirectory, nextNumber);
         }
 
         private static void Migrate()
@@ -146,11 +168,10 @@ namespace SimpleMigration
         private static void Help()
         {
             Console.WriteLine("SimpleMigration " + _version);
-            Console.WriteLine();
             Console.WriteLine("list of commands:");
-            Console.WriteLine();
             Console.WriteLine("?                - help");
             Console.WriteLine("version 'number' - migrate database to 'number' version");
+            Console.WriteLine("version 'new'    - create an up/down template file to next migration");
             Console.WriteLine();
             Console.WriteLine("NOTE: Use SimpleMigration without argument to migrate current database to last version");
             Console.WriteLine();
