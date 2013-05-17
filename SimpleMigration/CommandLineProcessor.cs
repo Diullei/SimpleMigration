@@ -6,6 +6,8 @@ using System.Reflection;
 
 namespace SimpleMigration
 {
+    using System.Text.RegularExpressions;
+
     public class CommandLineProcessor
     {
         private const int RESET = -2;
@@ -77,6 +79,11 @@ namespace SimpleMigration
             MigrateTo(Util.GetMaxVersionNumberInFolder(Environment.CurrentDirectory + @"\mig"));
         }
 
+        private static List<string> SplitScriptByGo(string script)
+        {
+            return Regex.Split(script, "^(GO\r\n|GO\r|GO\n|GO)$", RegexOptions.Multiline).Select(x => x.Trim()).Where(x => x.ToUpper() != "GO" && !string.IsNullOrWhiteSpace(x)).ToList();
+        }
+
         private static void MigrateTo(long number)
         {
             if(number == -1)
@@ -134,7 +141,10 @@ namespace SimpleMigration
                                                      try
                                                      {
                                                          var query = File.ReadAllText(string.Format("mig\\{0}-{1}.sql", version, isUp ? "up" : "down"));
-                                                         connection.Execute(query, null, transaction);
+
+                                                         var scripts = SplitScriptByGo(query);
+                                                         scripts.ForEach(s => connection.Execute(query, null, transaction));
+
                                                          transaction.Commit();
                                                      }
                                                      catch(Exception ex) 
