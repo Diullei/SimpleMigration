@@ -130,6 +130,7 @@ namespace SimpleMigration
             using (var connection = CreateConnection())
             {
                 var dbVersions = connection.Query<dynamic>("select count(*) Count from SimpleMigration_VersionInfo where version = @VERSION", new { VERSION = number });
+
                 if (dbVersions.ToList()[0].Count == 0)
                     throw new Exception("Invalid version number");
             }

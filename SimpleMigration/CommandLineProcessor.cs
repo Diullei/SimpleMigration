@@ -81,7 +81,7 @@ namespace SimpleMigration
 
         private static List<string> SplitScriptByGo(string script)
         {
-            return Regex.Split(script, "^(GO\r\n|GO\r|GO\n|GO)$", RegexOptions.Multiline).Select(x => x.Trim()).Where(x => x.ToUpper() != "GO" && !string.IsNullOrWhiteSpace(x)).ToList();
+            return Regex.Split(script, "^([Gg][Oo]\r\n|[Gg][Oo]\r|[Gg][Oo]\n|[Gg][Oo])$", RegexOptions.Multiline).Select(x => x.Trim()).Where(x => x.ToUpper() != "GO" && !string.IsNullOrWhiteSpace(x)).ToList();
         }
 
         private static void MigrateTo(long number)
@@ -112,10 +112,11 @@ namespace SimpleMigration
                 return;
             }
 
-
             var versionSteps = new List<long>();
 
             var isUp = false;
+
+            dbVersions.Sort();
 
             if(number > dbVersion)
             {
@@ -143,7 +144,7 @@ namespace SimpleMigration
                                                          var query = File.ReadAllText(string.Format("mig\\{0}-{1}.sql", version, isUp ? "up" : "down"));
 
                                                          var scripts = SplitScriptByGo(query);
-                                                         scripts.ForEach(s => connection.Execute(query, null, transaction));
+                                                         scripts.ForEach(s => connection.Execute(s, null, transaction));
 
                                                          transaction.Commit();
                                                      }
