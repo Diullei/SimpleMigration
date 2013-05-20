@@ -1,23 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace SimpleMigration
 {
-    using System.Text.RegularExpressions;
+    // verificar se a versão do banco é maior do que a versão do folder
 
     public class CommandLineProcessor
     {
         private const int RESET = -2;
 
-        private static string _version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        private static readonly string Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
         public CommandLineProcessor(string[] args)
         {
             try
             {
+                VerifyTag();
+
                 if (args.Length > 0)
                 {
                     switch (args[0])
@@ -31,28 +35,81 @@ namespace SimpleMigration
                         case "new":
                             NewTemplate();
                             break;
+                        case "current":
+                            Current();
+                            break;
                         case "version":
                             try
                             {
                                 MigrateTo(Convert.ToInt64(args[1]));
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
-                                Error("Version number expected");
+                                Error("Version number expected", ex);
                             }
+
                             break;
                         default:
-                            Error("Unknown command. Use '?' arg to view all commands");
+                            Error("Unknown command. Use '?' arg to view all commands", null);
                             break;
                     }
                 }
                 else
+                {
                     Migrate();
+                }
             }
             catch (Exception ex)
             {
-                Error("Unespected error --> " + ex.Message);
+                Error("Unespected error --> " + ex.Message, ex);
             }
+        }
+
+        private static void VerifyTag()
+        {
+            var folderTag = ConfigurationManager.AppSettings["tag"];
+            var databaseTag = Util.GetCurrentDataBaseTag();
+
+            if (folderTag != databaseTag)
+            {
+                var cacheForegroundColor = Console.ForegroundColor;
+                var cacheBackgroundColor = Console.BackgroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.BackgroundColor = ConsoleColor.Yellow;
+
+                Console.WriteLine("=== Current database tag ({0}) is different from folder tag ({1}) ===", databaseTag, folderTag);
+
+                Console.ForegroundColor = cacheForegroundColor;
+                Console.BackgroundColor = cacheBackgroundColor;
+            }
+        }
+
+        private static void Current()
+        {
+            var cacheForegroundColor = Console.ForegroundColor;
+
+            var folderVersion = Util.GetMaxVersionNumberInFolder(Environment.CurrentDirectory + @"\mig");
+            var databaseVersion = Util.GetCurrentDataBaseVersion();
+
+            var folderTag = ConfigurationManager.AppSettings["tag"];
+            var databaseTag = Util.GetCurrentDataBaseTag();
+
+            Console.WriteLine("  Migration version ");
+
+            Console.ForegroundColor = ConsoleColor.Green;
+
+            Console.WriteLine(" >           folder ({1}): {0}", folderVersion, folderTag);
+
+            if (folderTag != databaseTag)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+            }
+
+            Console.WriteLine(" >         database ({1}): {0}", databaseVersion, databaseTag);
+
+            Console.ForegroundColor = cacheForegroundColor;
+
+            Console.WriteLine();
         }
 
         private static void NewTemplate()
@@ -81,7 +138,7 @@ namespace SimpleMigration
 
         private static List<string> SplitScriptByGo(string script)
         {
-            return Regex.Split(script, "^([Gg][Oo]\r\n|[Gg][Oo]\r|[Gg][Oo]\n|[Gg][Oo])$", RegexOptions.Multiline).Select(x => x.Trim()).Where(x => x.ToUpper() != "GO" && !string.IsNullOrWhiteSpace(x)).ToList();
+            return Regex.Split(script, ConfigurationManager.AppSettings["block_split_pattern"], RegexOptions.Multiline).Select(x => x.Trim()).Where(x => x.ToUpper() != ConfigurationManager.AppSettings["uppercase_block_split_token"] && !string.IsNullOrWhiteSpace(x)).ToList();
         }
 
         private static void MigrateTo(long number)
@@ -92,21 +149,25 @@ namespace SimpleMigration
                 return;
             }
 
-            var dbVersions = Util.GetVersionsInFolder(Environment.CurrentDirectory + @"\mig");
+            var databaseVersions = Util.GetVersionsInFolder(Environment.CurrentDirectory + @"\mig");
 
-            if(number != RESET)
-                if (!dbVersions.Contains(number))
+            if (number != RESET)
+            {
+                if (!databaseVersions.Contains(number))
                 {
-                    Error("Invalid version number");
+                    Error("Invalid version number", null);
                     return;
                 }
+            }
 
-            var dbVersion = Util.GetCurrentDataBaseVersion();
+            var databaseVersion = Util.GetCurrentDataBaseVersion();
 
-            if(dbVersion == 0)
+            if (databaseVersion == 0)
+            {
                 Console.WriteLine("there is no version to reset.");
+            }
 
-            if (dbVersion == number)
+            if (databaseVersion == number)
             {
                 Console.WriteLine("Database is up to date.");
                 return;
@@ -116,24 +177,26 @@ namespace SimpleMigration
 
             var isUp = false;
 
-            dbVersions.Sort();
+            databaseVersions.Sort();
 
-            if(number > dbVersion)
+            if(number > databaseVersion)
             {
                 isUp = true;
-                versionSteps = dbVersions.Where(v => v > dbVersion && v <= number).Select(v => v).ToList();
+                versionSteps = databaseVersions.Where(v => v > databaseVersion && v <= number).Select(v => v).ToList();
             }
             else
             {
-                versionSteps = dbVersions.Where(v => v > number && v <= dbVersion).Select(v => v).Reverse().ToList();
+                versionSteps = databaseVersions.Where(v => v > number && v <= databaseVersion).Select(v => v).Reverse().ToList();
             }
 
             versionSteps.ForEach(version =>
                                      {
                                          try
                                          {
-                                             if(!isUp)
-                                                Util.VerifyVersionNumber(version);
+                                             if (!isUp)
+                                             {
+                                                 Util.VerifyVersionNumber(version);
+                                             }
 
                                              using (var connection = Util.CreateConnection())
                                              {
@@ -148,7 +211,7 @@ namespace SimpleMigration
 
                                                          transaction.Commit();
                                                      }
-                                                     catch(Exception ex) 
+                                                     catch (Exception ex) 
                                                      {
                                                          transaction.Rollback();
                                                          throw ex;
@@ -157,32 +220,40 @@ namespace SimpleMigration
                                              }
 
                                              if (isUp)
-                                                Util.InsertDataBaseVersionNumber(version);
+                                             {
+                                                 Util.InsertDataBaseVersionNumber(version);
+                                             }
                                              else
+                                             {
                                                  Util.DeleteDataBaseVersionNumberTo(version);
+                                             }
                                          }
                                          catch (Exception ex)
                                          {
-                                             Error("Migrate database to " + version + " --> " + ex.Message);
-                                             throw ex;
+                                             Error("Migrate database to " + version + " --> " + ex.Message, ex);
+                                             throw;
                                          }
 
                                          Console.WriteLine("Database migrated to: " + Util.GetCurrentDataBaseVersion() + " version.");
                                      });
         }
 
-        private static void Error(string message)
+        private static void Error(string message, Exception ex)
         {
             Console.WriteLine("Simple Migration Error: " + message + ".");
+
+            if (ex != null)
+                Console.WriteLine(ex);
         }
 
         private static void Help()
         {
-            Console.WriteLine("SimpleMigration " + _version);
+            Console.WriteLine("SimpleMigration " + Version);
             Console.WriteLine("list of commands:");
             Console.WriteLine("?                - help");
             Console.WriteLine("version 'number' - migrate database to 'number' version");
             Console.WriteLine("version 'new'    - create an up/down template file to next migration");
+            Console.WriteLine("current          - show current version");
             Console.WriteLine();
             Console.WriteLine("NOTE: Use SimpleMigration without argument to migrate current database to last version");
             Console.WriteLine();

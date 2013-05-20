@@ -119,10 +119,23 @@ namespace SimpleMigration
             using (var connection = CreateConnection())
             {
                 var dbVersions = connection.Query<DbVersion>("select max(version) Version from SimpleMigration_VersionInfo");
-                dbVersion = dbVersions.First();
+                dbVersion = dbVersions.ToList().Count > 0 ? dbVersions.First() : new DbVersion() { Version = -1 };
             }
 
             return dbVersion.Version;
+        }
+
+        public static string GetCurrentDataBaseTag()
+        {
+            DbTagVersion dbVersion = null;
+
+            using (var connection = CreateConnection())
+            {
+                var dbVersions = connection.Query<DbTagVersion>("select tag Tag from SimpleMigration_VersionInfo where version = (select max(version) Version from SimpleMigration_VersionInfo)");
+                dbVersion = dbVersions.ToList().Count > 0 ? dbVersions.First() : new DbTagVersion() { Tag = "" };
+            }
+
+            return dbVersion.Tag;
         }
 
         public static void VerifyVersionNumber(long number)
@@ -138,9 +151,10 @@ namespace SimpleMigration
 
         public static void InsertDataBaseVersionNumber(long version)
         {
+            var tag = ConfigurationManager.AppSettings["tag"];
             using (var connection = CreateConnection())
             {
-                connection.Execute("insert into SimpleMigration_VersionInfo values (@VERSION)", new { VERSION = version });
+                connection.Execute("insert into SimpleMigration_VersionInfo values (@VERSION, @TAG)", new { VERSION = version, TAG = tag });
             }
         }
 
