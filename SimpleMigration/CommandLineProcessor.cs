@@ -8,8 +8,6 @@ using System.Text.RegularExpressions;
 
 namespace SimpleMigration
 {
-    // verificar se a versão do banco é maior do que a versão do folder
-
     public class CommandLineProcessor
     {
         private const int RESET = -2;
@@ -35,10 +33,27 @@ namespace SimpleMigration
                         case "new":
                             NewTemplate();
                             break;
+                        case "n":
+                            NewTemplate();
+                            break;
                         case "current":
                             Current();
                             break;
+                        case "c":
+                            Current();
+                            break;
                         case "version":
+                            try
+                            {
+                                MigrateTo(Convert.ToInt64(args[1]));
+                            }
+                            catch (Exception ex)
+                            {
+                                Error("Version number expected", ex);
+                            }
+
+                            break;
+                        case "v":
                             try
                             {
                                 MigrateTo(Convert.ToInt64(args[1]));
@@ -250,10 +265,10 @@ namespace SimpleMigration
         {
             Console.WriteLine("SimpleMigration " + Version);
             Console.WriteLine("list of commands:");
-            Console.WriteLine("?                - help");
-            Console.WriteLine("version 'number' - migrate database to 'number' version");
-            Console.WriteLine("version 'new'    - create an up/down template file to next migration");
-            Console.WriteLine("current          - show current version");
+            Console.WriteLine("?                   - help");
+            Console.WriteLine("version [v] 'number' - migrate database to 'number' version");
+            Console.WriteLine("version [n] 'new'    - create an up/down template file to next migration");
+            Console.WriteLine("current [c]          - show current version");
             Console.WriteLine();
             Console.WriteLine("NOTE: Use SimpleMigration without argument to migrate current database to last version");
             Console.WriteLine();
