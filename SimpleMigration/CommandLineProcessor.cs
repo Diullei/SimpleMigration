@@ -14,6 +14,8 @@ namespace SimpleMigration
 
         private static readonly string Version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
+        private static int _errorCode = 0;
+
         public CommandLineProcessor(string[] args)
         {
             try
@@ -76,8 +78,14 @@ namespace SimpleMigration
             }
             catch (Exception ex)
             {
-                Error("Unespected error --> " + ex.Message, ex);
+                Error("Unespected error", ex);
             }
+
+            if (_errorCode != 0)
+            {
+                Current();
+            }
+            Environment.Exit(_errorCode);
         }
 
         private static void VerifyTag()
@@ -206,6 +214,10 @@ namespace SimpleMigration
 
             versionSteps.ForEach(version =>
                                      {
+                                         string currentQuery = null;
+                                         string currentFile = null;
+                                         int currentFileIndex = 0;
+
                                          try
                                          {
                                              if (!isUp)
@@ -219,10 +231,16 @@ namespace SimpleMigration
                                                  {
                                                      try
                                                      {
-                                                         var query = File.ReadAllText(string.Format("mig\\{0}-{1}.sql", version, isUp ? "up" : "down"));
+                                                         currentFile = string.Format("mig\\{0}-{1}.sql", version, isUp ? "up" : "down");
+                                                         var query = File.ReadAllText(currentFile);
 
                                                          var scripts = SplitScriptByGo(query);
-                                                         scripts.ForEach(s => connection.Execute(s, null, transaction));
+                                                         scripts.ForEach(s =>
+                                                             {
+                                                                 currentQuery = s;
+                                                                 currentFileIndex = query.Substring(currentFileIndex).IndexOf(s);
+                                                                 connection.Execute(s, null, transaction);
+                                                             });
 
                                                          transaction.Commit();
                                                      }
@@ -245,7 +263,12 @@ namespace SimpleMigration
                                          }
                                          catch (Exception ex)
                                          {
-                                             Error("Migrate database to " + version + " --> " + ex.Message, ex);
+                                             Error("Migrate database to " + version, ex, new QueryError
+                                                 {
+                                                     File = currentFile, 
+                                                     Query = currentQuery, 
+                                                     StartLine = currentFileIndex
+                                                 });
                                              throw;
                                          }
 
@@ -253,12 +276,50 @@ namespace SimpleMigration
                                      });
         }
 
-        private static void Error(string message, Exception ex)
+        private static void Error(string message, Exception ex, QueryError query = null)
         {
-            Console.WriteLine("Simple Migration Error: " + message + ".");
-
+            Console.WriteLine("---------------------------------------------------------------------");
+            Console.WriteLine(" Migration error: " + message);
+            Console.WriteLine("---------------------------------------------------------------------");
+            Console.WriteLine();
+            Console.WriteLine(" Error message: ");
+            Console.WriteLine();
             if (ex != null)
-                Console.WriteLine(ex);
+            {
+                var stk = ex.ToString();
+                var lines = Regex.Split(stk, "\r\n|\r|\n");
+                for (var i = 0; i < lines.Length; i++)
+                {
+                    Console.WriteLine("    " + lines[i]);
+                }
+            }
+            else
+            {
+                Console.WriteLine();
+            }
+
+            if (query != null)
+            {
+                Console.WriteLine();
+                Console.WriteLine(" File      : " + query.File);
+                Console.WriteLine(" Start line: " + query.StartLine);
+                Console.WriteLine(" Query     : ");
+
+                Console.WriteLine();
+                var lines = Regex.Split(query.Query, "\r\n|\r|\n");
+                var max = lines.Length < 6 ? lines.Length : 6;
+                var bkColor = Console.BackgroundColor;
+                Console.BackgroundColor = ConsoleColor.Blue;
+                for (var i = 0; i < max; i++)
+                {
+                    Console.WriteLine("    " + lines[i]);
+                }
+                Console.BackgroundColor = bkColor;
+                Console.WriteLine();
+            }
+            Console.WriteLine("---------------------------------------------------------------------");
+
+            _errorCode = 1;
         }
 
         private static void Help()
