@@ -8,6 +8,8 @@ using System.Text.RegularExpressions;
 
 namespace SimpleMigration
 {
+    using System.Threading;
+
     public class CommandLineProcessor
     {
         private const int RESET = -2;
@@ -43,6 +45,26 @@ namespace SimpleMigration
                             break;
                         case "c":
                             Current();
+                            break;
+                        case "join":
+                            try
+                            {
+                                Join(Convert.ToInt64(args[1]));
+                            }
+                            catch (Exception ex)
+                            {
+                                Join(1);
+                            }
+                            break;
+                        case "j":
+                            try
+                            {
+                                Join(Convert.ToInt64(args[1]));
+                            }
+                            catch (Exception ex)
+                            {
+                                Join(1);
+                            }
                             break;
                         case "version":
                             try
@@ -107,6 +129,51 @@ namespace SimpleMigration
             }
         }
 
+        private static void Join(long start)
+        {
+            var databaseVersions = Util.GetVersionsInFolder(Environment.CurrentDirectory + @"\mig");
+
+            databaseVersions = databaseVersions.Where(n => n >= start).ToList();
+
+            databaseVersions.Sort();
+
+            Console.WriteLine("Joining UP scripts");
+
+            using (var sw = new StreamWriter(Environment.CurrentDirectory + @"\mig\UP-JOIN.sql"))
+            {
+                databaseVersions.ForEach(version =>
+                {
+                    var file = string.Format("mig\\{0}-{1}.sql", version, "up");
+
+                    Console.WriteLine(">> Joining " + file);
+
+                    var content = File.ReadAllText(file);
+
+                    sw.WriteLine("-- " + file);
+                    sw.WriteLine(content);
+                });
+            }
+
+            databaseVersions.Reverse();
+
+            Console.WriteLine("Joining DOWN scripts");
+
+            using (var sw = new StreamWriter(Environment.CurrentDirectory + @"\mig\DOWN-JOIN.sql"))
+            {
+                databaseVersions.ForEach(version =>
+                {
+                    var file = string.Format("mig\\{0}-{1}.sql", version, "down");
+
+                    Console.WriteLine(">> Joining " + file);
+
+                    var content = File.ReadAllText(file);
+
+                    sw.WriteLine("-- " + file);
+                    sw.WriteLine(content);
+                });
+            }
+        }
+
         private static void Current()
         {
             var cacheForegroundColor = Console.ForegroundColor;
@@ -131,6 +198,8 @@ namespace SimpleMigration
             Console.WriteLine(" >         database ({1}): {0}", databaseVersion, databaseTag);
 
             Console.ForegroundColor = cacheForegroundColor;
+
+            Thread.Sleep(100);
 
             Console.WriteLine();
         }
@@ -290,7 +359,12 @@ namespace SimpleMigration
                 var lines = Regex.Split(stk, "\r\n|\r|\n");
                 for (var i = 0; i < lines.Length; i++)
                 {
-                    Console.WriteLine("    " + lines[i]);
+                    var foreColor = Console.ForegroundColor;
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Write(">>    ");
+                    Console.ForegroundColor = foreColor;
+                    Console.WriteLine(lines[i]);
+                    Thread.Sleep(100);
                 }
             }
             else
@@ -307,14 +381,29 @@ namespace SimpleMigration
 
                 Console.WriteLine();
                 var lines = Regex.Split(query.Query, "\r\n|\r|\n");
-                var max = lines.Length < 6 ? lines.Length : 6;
+                var max = lines.Length < 15 ? lines.Length : 15;
                 var bkColor = Console.BackgroundColor;
+                var foreColor = Console.ForegroundColor;
                 Console.BackgroundColor = ConsoleColor.Blue;
                 for (var i = 0; i < max; i++)
                 {
                     Console.WriteLine("    " + lines[i]);
                 }
+
+                if (lines.Length > 15)
+                {
+                    Console.Write("    ... ");
+                    Console.BackgroundColor = ConsoleColor.Yellow;
+                    Console.ForegroundColor = ConsoleColor.Blue;
+                    Console.Write("<more>");
+                    Console.BackgroundColor = ConsoleColor.Blue;
+                    Console.ForegroundColor = foreColor;
+                    Console.WriteLine(" ...");
+                }
+
                 Console.BackgroundColor = bkColor;
+                Thread.Sleep(100);
+
                 Console.WriteLine();
             }
             Console.WriteLine("---------------------------------------------------------------------");
